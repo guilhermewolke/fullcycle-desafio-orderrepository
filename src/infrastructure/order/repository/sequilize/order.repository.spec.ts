@@ -154,7 +154,7 @@ describe("Order repository test", () => {
     expect(orders).toEqual([order, order2]);
   });
 
-  it("should update an order", async () => {
+  it("should update an order with an item with same ProductID", async () => {
     const customerRepository = new CustomerRepository();
     const customer = new Customer("123", "Customer 1");
     const address = new Address("Street 1", 1, "Zipcode 1", "City 1");
@@ -208,6 +208,77 @@ describe("Order repository test", () => {
           quantity: 3,
           order_id: order.id,
           product_id: product.id,
+        },
+      ],
+    });
+  });
+
+  it("should update an order with an item with another ProductID", async () => {
+    const customerRepository = new CustomerRepository();
+    const customer = new Customer("123", "Customer 1");
+    const address = new Address("Street 1", 1, "Zipcode 1", "City 1");
+    customer.changeAddress(address);
+    await customerRepository.create(customer);
+
+    const productRepository = new ProductRepository();
+    const product = new Product("123", "Product 1", 10);
+    await productRepository.create(product);
+
+    const product2 = new Product("124", "Product 2", 20);
+    await productRepository.create(product2);
+
+    const orderItem = new OrderItem(
+      "1",
+      product.name,
+      product.price,
+      product.id,
+      2
+    );
+
+    let order = new Order("123", "123", [orderItem]);
+
+    const orderRepository = new OrderRepository();
+    await orderRepository.create(order);
+
+    let createdOrder = await orderRepository.find(order.id);
+
+    // Alterando o código do cliente, bem como a quantidade de itens do pedido...
+    const orderItem2 = new OrderItem(
+      "2",
+      product2.name,
+      product2.price,
+      product2.id,
+      1
+    );
+    
+    createdOrder.addItem(orderItem2);
+    await orderRepository.update(createdOrder);
+    
+    const orderModel = await OrderModel.findOne({
+      where: { id: createdOrder.id },
+      include: ["items"],
+    });
+
+    expect(orderModel.toJSON()).toStrictEqual({
+      id: "123",
+      customer_id: "123",
+      total: createdOrder.total(),
+      items: [
+        {
+          id: orderItem.id,
+          name: orderItem.name,
+          price: orderItem.price,
+          quantity: 2,
+          order_id: order.id,
+          product_id: product.id,
+        },
+        {
+          id: orderItem2.id,
+          name: orderItem2.name,
+          price: orderItem2.price,
+          quantity: 1,
+          order_id: order.id,
+          product_id: product2.id,
         },
       ],
     });
